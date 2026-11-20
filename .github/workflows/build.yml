@@ -1,1 +1,43 @@
+name: Build Skyline Flight Simulator
 
+on:
+  workflow_dispatch:
+  push:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Android SDK packages
+        run: |
+          SDKMANAGER=$(find /usr/local/lib/android/sdk -name sdkmanager -type f | head -n 1)
+          echo "SDK Manager: $SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses || true
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      - name: Extract simulator ZIP
+        run: |
+          unzip -q SkylineFlightSim-Android.zip -d source
+          test -f source/SkylineFlightSim/gradlew
+
+      - name: Build Android APK
+        working-directory: source/SkylineFlightSim
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Skyline-Flight-Simulator-APK
+          path: source/SkylineFlightSim/app/build/outputs/apk/debug/*.apk
